@@ -1,0 +1,116 @@
+name: Compile Program
+
+on:
+  push:
+    branches: [ '*' ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  build_program:
+    name: Build for ${{ matrix.identifier }}
+    runs-on: ${{ matrix.os_version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        buildjobs:
+          - windows
+          - linux
+
+        include:
+          - buildjobs: windows
+            os_version: windows-latest
+            identifier: 'Windows'
+            msvc_arch: 'x64'
+            package_name: 'windows'
+            premake5action: 'vs2022'
+
+          - buildjobs: linux
+            os_version: ubuntu-latest
+            identifier: 'Linux'
+            cc: clang-15
+            cxx: clang++-15
+            package_name: 'linux'
+            premake5action: 'gmake2'
+
+    steps:
+      - name: Setup Premake5
+        uses: abel0b/setup-premake@v2.4
+        with:
+          version: "5.0.0-beta2"
+
+      - name: Install Packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.cxx }} g++-multilib
+          echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+          echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+
+      - name: Install MSVC for ${{ matrix.identifier }}
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: ${{ matrix.msvc_arch }}
+
+      - name: Fetch This Repo
+        uses: actions/checkout@v4.1.7
+        with:
+          path: program
+          submodules: recursive
+
+      - name: Run Premake5 ${{ runner.os }}
+        run: |
+          cd ${{ github.workspace }}/program/
+          premake5 ${{ matrix.premake5action }}
+
+      - name: Compile For Windows
+        if: runner.os == 'Windows'
+        run: |
+          cd ${{ github.workspace }}/program/build/${{ matrix.premake5action }}/
+          msbuild tf2-mapcycle-generator.sln -maxCpuCount:4 -target:tf2-mapcycle-generator -property:Platform=Win64 -property:Configuration=Release
+
+      - name: Compile Extension (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd ${{ github.workspace }}/program/build/${{ matrix.premake5action }}/
+          make -j 4 config=release_linux64 tf2-mapcycle-generator
+
+      - name: Get commit SHA
+        uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: tf2mapcyclegenerator-${{ matrix.package_name }}-${{ steps.short-sha.outputs.sha }}
+          path: |
+              program/build/bin/x86_64/release/*
+            
+  create_release:
+    name: Upload Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [ build_program ]
+
+    steps:
+      - name: Create Upload Folder
+        run: |
+          mkdir -p ${{ github.workspace }}/upload/
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4.1.7
+        with:
+          path: ${{ github.workspace }}/upload/
+
+      - name: GH Release
+        uses: softprops/action-gh-release@v2.0.6
+        with:
+          name: "TF2 Mapcycle Generator ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: |
+            ${{ github.workspace }}/upload/*
+      
+  
