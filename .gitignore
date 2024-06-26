@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+# Ignore premake5 build folder
+.build/
