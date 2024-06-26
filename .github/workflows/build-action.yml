@@ -88,6 +88,20 @@ jobs:
           name: tf2mapcyclegenerator-${{ matrix.package_name }}-${{ steps.short-sha.outputs.sha }}
           path: |
               program/build/bin/x86_64/release/*
+
+      - name: Create Upload Folder
+        run: |
+          mkdir -p ${{ github.workspace }}/upload/
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4.1.7
+        with:
+          path: ${{ github.workspace }}/upload/
+
+      - name: Check Files
+        run: |
+          cd ${{ github.workspace }}/upload/
+          ls -lah
             
   create_release:
     name: Upload Release
@@ -104,6 +118,11 @@ jobs:
         uses: actions/download-artifact@v4.1.7
         with:
           path: ${{ github.workspace }}/upload/
+
+      - name: Check Files
+        run: |
+          cd ${{ github.workspace }}/upload/
+          ls -lah
 
       - name: GH Release
         uses: softprops/action-gh-release@v2.0.6
