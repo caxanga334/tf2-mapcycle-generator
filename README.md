@@ -10,3 +10,16 @@ Example: `./tf2-mapcycle-generator --itemsgame-path "/home/tf2server/serverfiles
 
 The output file will be printed to the terminal.
 
+## Options
+
+The following options are available for configuring the generator.
+
+* `--include-halloween`: Include halloween maps.
+* `--include-christmas`: Include christmas maps.
+* `--include-competitive-maps`: Include 6v6 competitive maps.
+* `--include-unlisted-maps`: Include unlisted maps.
+* `--exclude-core`: Exclude maps tagged as 'core' maps.
+* `--exclude-alternatives`: Exclude maps tagged as 'alternative' maps.
+* `--no-comments`: Do not add comments to the generated mapcycle file.
+* `--no-duplicates`: Do not add duplicate maps to the generated mapcycle file.
+

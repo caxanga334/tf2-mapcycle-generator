@@ -46,6 +46,43 @@ enum GameType : uint32_t
 
 typedef std::pair<GameType, std::string> MapEntry;
 
+struct GeneratorOptions
+{
+	GeneratorOptions()
+	{
+		halloween = false;
+		christmas = false;
+		unlisted = false;
+		no_alternatives = false;
+		no_duplicates = false;
+		add_comments = true;
+		no_comp = true;
+		no_core = false;
+	}
+
+	GeneratorOptions& operator= (const GeneratorOptions& other)
+	{
+		this->halloween = other.halloween;
+		this->christmas = other.christmas;
+		this->unlisted = other.unlisted;
+		this->no_alternatives = other.no_alternatives;
+		this->no_duplicates = other.no_duplicates;
+		this->add_comments = other.add_comments;
+		this->no_comp = other.no_comp;
+		this->no_core = other.no_core;
+		return *this;
+	}
+
+	bool halloween;
+	bool christmas;
+	bool unlisted;
+	bool no_alternatives;
+	bool no_duplicates;
+	bool add_comments;
+	bool no_comp;
+	bool no_core;
+};
+
 class MapCycleGenerator
 {
 public:
@@ -54,9 +91,15 @@ public:
 
 	void Generate();
 
+	void SetOptions(GeneratorOptions& options)
+	{
+		m_options = options;
+	}
+
 private:
 	std::filesystem::path m_path;
 	std::vector<MapEntry> m_maps;
+	GeneratorOptions m_options;
 
 	void ParseKV();
 	bool LoadFile(std::stringstream& buffer) const;

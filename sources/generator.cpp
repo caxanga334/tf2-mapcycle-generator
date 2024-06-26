@@ -24,10 +24,21 @@
 
 constexpr std::string_view SECTION_MAPS = "maps";
 constexpr std::string_view SECTION_MAPLIST = "maplist";
+constexpr std::string_view SECTION_HALLOWEEN = "halloween";
+constexpr std::string_view SECTION_CHRISTMAS = "christmas";
 constexpr std::string_view KEY_ENABLED = "enabled";
 constexpr std::string_view KEY_NAME = "name";
 constexpr std::string_view KEY_MMTYPE = "mm_type";
 constexpr size_t MMTYPE_MIN_VALID_LENGTH = 3; // shortests one is "core"
+
+enum MMType : int32_t
+{
+	Core = 0,
+	Alternative,
+	Special_Events,
+	Competitive,
+	Unlisted
+};
 
 static std::unordered_map<std::string, GameType> s_gametypelist = {
 	{"attack_defense", GT_ATTACK_DEFENSE},
@@ -48,6 +59,13 @@ static std::unordered_map<std::string, GameType> s_gametypelist = {
 };
 
 static std::string s_unknowngametype = "UNKNOWN-GAME-TYPE";
+
+static std::unordered_map<std::string, MMType> s_mmtypelist = {
+	{"core", Core},
+	{"alternative", Alternative},
+	{"special_events", Special_Events},
+	{"competitive_6v6", Competitive}
+};
 
 static GameType StringToGameType(const std::string& name)
 {
@@ -72,6 +90,18 @@ static const std::string& GameTypeToString(GameType type)
 	}
 
 	return s_unknowngametype;
+}
+
+static MMType StringToMMType(const std::string& name)
+{
+	auto type = s_mmtypelist.find(name);
+
+	if (type != s_mmtypelist.end())
+	{
+		return type->second;
+	}
+
+	return MMType::Unlisted;
 }
 
 MapCycleGenerator::MapCycleGenerator(std::filesystem::path filepath)
@@ -103,6 +133,7 @@ void MapCycleGenerator::ParseKV()
 	std::string file = std::string{ buffer.str() };
 	auto root = tyti::vdf::read(file.cbegin(), file.cend());
 	GameType currentGT = MAX_GAMETYPES;
+	MMType currentMMT = Core;
 
 	for (auto& child : root.childs)
 	{
@@ -110,6 +141,12 @@ void MapCycleGenerator::ParseKV()
 		{
 			for (auto& subcat : child.second->childs) // "attack_defense"
 			{
+				if ((!m_options.christmas && subcat.first == SECTION_CHRISTMAS) || 
+					(!m_options.halloween && subcat.first == SECTION_HALLOWEEN))
+				{
+					continue;
+				}
+
 				bool skip = false;
 				currentGT = StringToGameType(subcat.first);
 
@@ -117,11 +154,17 @@ void MapCycleGenerator::ParseKV()
 				{
 					if (attribs.first == KEY_MMTYPE)
 					{
-						if (attribs.second.size() < MMTYPE_MIN_VALID_LENGTH)
+						currentMMT = StringToMMType(attribs.second);
+
+						if ((m_options.no_core && currentMMT == MMType::Core) || 
+							(!m_options.unlisted && currentMMT == MMType::Unlisted) ||
+							(m_options.no_alternatives && currentMMT == MMType::Alternative) ||
+							(m_options.no_comp && currentMMT == MMType::Competitive))
 						{
 							skip = true;
-							break;
 						}
+
+						break;
 					}
 				}
 
@@ -199,20 +242,30 @@ void MapCycleGenerator::WriteFile()
 		return;
 	}
 
+	std::unordered_set<std::string> savedmaps;
+	savedmaps.reserve(m_maps.size());
+
 	for (int i = 0; i < static_cast<int>(MAX_GAMETYPES); i++)
 	{
 		GameType gt = static_cast<GameType>(i);
-		const std::string& gtname = GameTypeToString(gt);
-		std::string buffer = "// ";
-		buffer = buffer + gtname;
-		
-		file << buffer << std::endl;
+
+		if (m_options.add_comments)
+		{
+			const std::string& gtname = GameTypeToString(gt);
+			std::string buffer = "// ";
+			buffer = buffer + gtname;
+
+			file << buffer << std::endl;
+		}
 
 		for (auto& map : m_maps)
 		{
-			if (map.first == gt)
+			const bool duplicate = m_options.no_duplicates && savedmaps.find(map.second) != savedmaps.end();
+
+			if (map.first == gt && !duplicate)
 			{
 				file << map.second << std::endl;
+				savedmaps.insert(map.second);
 			}
 		}
 	}

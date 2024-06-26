@@ -26,10 +26,34 @@
 
 constexpr std::string_view arg_help = "--help";
 constexpr std::string_view arg_itemspath = "--itemsgame-path";
-constexpr std::string_view productversion = "1.0.0";
+constexpr std::string_view arg_halloween = "--include-halloween";
+constexpr std::string_view arg_christmas = "--include-christmas";
+constexpr std::string_view arg_noalt = "--exclude-alternatives";
+constexpr std::string_view arg_nocore = "--exclude-core";
+constexpr std::string_view arg_includecomp = "--include-competitive-maps";
+constexpr std::string_view arg_nocomments = "--no-comments";
+constexpr std::string_view arg_noduplicates = "--no-duplicates";
+constexpr std::string_view arg_unlisted = "--include-unlisted-maps";
+constexpr std::string_view productversion = "1.1.0";
 
 namespace utils
 {
+	static void print_help()
+	{
+		std::cout << "Parameters:" << "\n";
+		std::cout << "--help: Prints this message." << "\n";
+		std::cout << "--itemsgame-path: Full path to the items_game.txt file to be parsed." << "\n";
+		std::cout << "--include-halloween: Include halloween maps." << "\n";
+		std::cout << "--include-christmas: Include christmas maps." << "\n";
+		std::cout << "--exclude-alternatives: Exclude maps tagged as 'alternative'." << "\n";
+		std::cout << "--exclude-core: Exclude maps tagged as 'core'." << "\n";
+		std::cout << "--include-competitive-maps: Exclude maps tagged as '6v6 competitive'." << "\n";
+		std::cout << "--no-comments: Do not add comments to the mapcycle file." << "\n";
+		std::cout << "--no-duplicates: Do not write duplicate maps to the mapcycle file." << "\n";
+		std::cout << "--include-unlisted-maps: Include unlisted maps." << "\n";
+		std::cout << std::endl;
+	}
+
 	static bool should_print_help(const int& argc, char** argv)
 	{
 		for (int i = 0; i < argc; i++)
@@ -66,26 +90,60 @@ namespace utils
 		return false;
 	}
 
-	static bool parse_options(const int& argc, char** argv)
+	static void parse_options(const int& argc, char** argv, GeneratorOptions& options)
 	{
 		for (int i = 0; i < argc; i++)
 		{
 			std::string szArg(argv[i]);
 
-			if (szArg == arg_help)
+			if (szArg == arg_christmas)
 			{
-				return true;
+				options.christmas = true;
+				continue;
+			}
+
+			if (szArg == arg_halloween)
+			{
+				options.halloween = true;
+				continue;
+			}
+
+			if (szArg == arg_nocore)
+			{
+				options.no_core = true;
+				continue;
+			}
+
+			if (szArg == arg_noalt)
+			{
+				options.no_alternatives = true;
+				continue;
+			}
+
+			if (szArg == arg_includecomp)
+			{
+				options.no_comp = false;
+				continue;
+			}
+
+			if (szArg == arg_noduplicates)
+			{
+				options.no_duplicates = true;
+				continue;
+			}
+
+			if (szArg == arg_nocomments)
+			{
+				options.add_comments = false;
+				continue;
+			}
+
+			if (szArg == arg_unlisted)
+			{
+				options.unlisted = true;
+				continue;
 			}
 		}
-
-		return false;
-	}
-
-	static void print_help()
-	{
-		std::cout << "Parameters:" << "\n";
-		std::cout << "--help: Prints this message." << "\n";
-		std::cout << "--itemsgame-path: Full path to the items_game.txt file to be parsed." << std::endl;
 	}
 }
 
@@ -120,6 +178,10 @@ int main(int argc, char** argv)
 	}
 
 	std::unique_ptr<MapCycleGenerator> generator = std::make_unique<MapCycleGenerator>(path);
+	GeneratorOptions options;
+
+	utils::parse_options(argc, argv, options);
+	generator->SetOptions(options);
 
 	auto start = std::chrono::high_resolution_clock::now();
 	generator->Generate();
