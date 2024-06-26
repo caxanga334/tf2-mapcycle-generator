@@ -96,19 +96,25 @@ jobs:
     needs: [ build_program ]
 
     steps:
-      - name: Create Upload Folder
+      - name: Create Folders
         run: |
           mkdir -p ${{ github.workspace }}/upload/
+          mkdir -p ${{ github.workspace }}/download/
 
+      # Going to leave a note here, this download them into FOLDERS, not a zipped file
       - name: Download Artifacts
         uses: actions/download-artifact@v4.1.7
         with:
-          path: ${{ github.workspace }}/upload/
+          path: ${{ github.workspace }}/download/
 
-      - name: Add .zip File Extension
+      - name: ZIP Folders
         run: |
+          cd ${{ github.workspace }}/download/
+          find . -mindepth 1 -maxdepth 1 -type d -exec 7z a -tzip {}.zip {} \;
+          ls -lah
+          mv *.zip ${{ github.workspace }}/upload/
           cd ${{ github.workspace }}/upload/
-          find ./ -type f -name "*" -exec mv {} {}.zip \;
+          ls -lah
 
       - name: GH Release
         uses: softprops/action-gh-release@v2.0.6
